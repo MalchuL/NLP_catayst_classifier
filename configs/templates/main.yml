@@ -55,7 +55,7 @@ stages:
     optimizer_params:
       optimizer: AdamW
       lr: 0.002
-      weight_decay: 0.001
+      weight_decay: 0.004
       betas: [0.9, 0.99]
 
 

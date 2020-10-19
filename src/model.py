@@ -28,16 +28,19 @@ class NLPClassifierModel(nn.Module):
 
         self.body_title_net = nn.LSTM(input_size=input_channels, hidden_size=hidden_size, num_layers=num_layers,
                                 batch_first=False, bidirectional=bidirectional)  # Two different networks don't works
-        self.tags_net = nn.Linear(input_channels, hidden_size)
+        self.tags_net = nn.Sequential(nn.Linear(input_channels, hidden_size), nn.BatchNorm1d(hidden_size),
+                                      nn.ReLU(inplace=True))
 
 
         self.title_lstm_output_to_hidden = nn.Linear(hidden_size * num_layers * (2 if bidirectional else 1), hidden_size)
 
 
-        self.tags_to_title = nn.Linear(hidden_size, input_channels)
-        self.title_to_body = nn.Linear(hidden_size, input_channels)
+        self.tags_to_title = nn.Sequential(nn.Linear(hidden_size, input_channels), nn.BatchNorm1d(input_channels),
+                                      nn.ReLU(inplace=True))
+        self.title_to_body = nn.Sequential(nn.Linear(hidden_size, input_channels), nn.BatchNorm1d(input_channels),
+                                      nn.ReLU(inplace=True))
 
-        self.hidden = nn.Sequential(nn.Linear(hidden_size * 3, hidden_size), nn.GroupNorm(NUM_GROUPS, hidden_size),
+        self.hidden = nn.Sequential(nn.Linear(hidden_size * 3, hidden_size), nn.BatchNorm1d(hidden_size),
                                     nn.ReLU(inplace=True))
 
         self.classify = nn.Sequential(
