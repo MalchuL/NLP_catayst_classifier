@@ -54,8 +54,10 @@ def process_text_onto_sentences(text, max_len_symbols=1):
 def get_sent_emb(text, aggregation='max', model=None):
     if aggregation == 'max':
         result = model.get_sent_max_embs(text)
-    else:
+    elif aggregation == 'mean':
         result = model.get_sent_mean_embs(text)
+    else:
+        result = model.get_sent_full_embs(text)
     return result
 
 def get_stack_overflow_embs(row, model):
@@ -114,7 +116,7 @@ class NLPStackOverflowClassificationDataset(data.Dataset):
         title_embs = self.sencences_to_embs(title_text)
         # Tags part
         tags_text = elem['Tags']
-        tags_embs = get_sent_emb(' '.join(split_tags(tags_text)), model=self.model)
+        tags_embs = get_sent_emb(' '.join(split_tags(tags_text)), self.embs_aggregation, model=self.model)
 
 
 

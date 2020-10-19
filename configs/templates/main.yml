@@ -8,8 +8,8 @@ shared:
 model_params:
   model: NLPClassifierModel
   num_classes: *num_classes
-  input_channels: 302
-  hidden_size: 128
+  input_channels: 602
+  hidden_size: 96
   num_layers: 1
   bidirectional: False
 
@@ -39,11 +39,11 @@ stages:
       test_datapath: dataset/my_test.parquet
       infer_datapath: dataset/test.parquet
       fasttext_model_path: pretrained_model/wiki.en
-      aggregation: max
+      aggregation: full
 
     scheduler_params:
        scheduler: ExponentialLR
-       gamma: 0.975
+       gamma: 0.985
 
     criterion_params:
       _key_value: True

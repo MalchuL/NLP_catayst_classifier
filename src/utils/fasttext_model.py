@@ -23,15 +23,25 @@ class FastTextEmbs:
         self.seps = seps
 
     def get_sent_mean_embs(self, text):
+        #print('mean embs')
         embs = self.get_embs(text).mean(0)
         additional_fetures = self.get_additional_fetures(text)
         embs = np.concatenate([embs, additional_fetures])
         return embs
 
     def get_sent_max_embs(self, text):
+        #print('max embs')
         embs = self.get_embs(text).max(0)
         additional_fetures = self.get_additional_fetures(text)
         embs = np.concatenate([embs, additional_fetures])
+        return embs
+
+    def get_sent_full_embs(self, text):
+        #print('full embs')
+        embs_max = self.get_embs(text).max(0)
+        embs_mean = self.get_embs(text).mean(0)
+        additional_fetures = self.get_additional_fetures(text)
+        embs = np.concatenate([embs_max, embs_mean, additional_fetures])
         return embs
 
     def preprocess_word(self, word):
