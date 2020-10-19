@@ -108,9 +108,17 @@ class NLPStackOverflowClassificationDataset(data.Dataset):
         tags_text = elem['Tags']
         tags_embs = get_sent_emb(' '.join(split_tags(tags_text)), model=self.model)
 
-        target_one_hot = np.zeros(self.num_classes, dtype=np.float32)
-        target_one_hot[elem['target']] = 1
-        return {'body': body_embs.astype(np.float32), 'title': title_embs.astype(np.float32), 'tags': tags_embs.astype(np.float32), 'target_one_hot':target_one_hot,  'target':elem['target'], 'Id': elem.name}
+
+
+        try:
+            target = elem['target']
+            target_one_hot = np.zeros(self.num_classes, dtype=np.float32)
+            target_one_hot[target] = 1
+        except:
+            target = 4
+            target_one_hot = np.zeros(self.num_classes, dtype=np.float32)
+
+        return {'body': body_embs.astype(np.float32), 'title': title_embs.astype(np.float32), 'tags': tags_embs.astype(np.float32), 'target': target, 'target_one_hot': target_one_hot, 'Id': elem.name}
 
     def __len__(self):
         return len(self.df)

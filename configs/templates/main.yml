@@ -25,7 +25,7 @@ stages:
     state_params:
       main_metric: &reduced_metric f1_score
       minimize_metric: False
-      num_epochs: 30
+      num_epochs: 120
 
     data_params:
       num_workers: 2
@@ -34,6 +34,7 @@ stages:
       use_mock: False
       train_datapath: dataset/my_train.parquet
       test_datapath: dataset/my_test.parquet
+      infer_datapath: dataset/test.parquet
       fasttext_model_path: pretrained_model/wiki.en
 
     scheduler_params:
@@ -50,7 +51,21 @@ stages:
       lr: 0.001
 
     callbacks_params:
+
+      prediction_callback:
+        _wrapper:
+          callback: ControlFlowCallback
+          ignore_loaders: [train, valid]
+        callback: PredictionCallback
+        input_key: Id
+        output_key: logits
+        output_csv_path: prediction.csv
+
+
       loss_class:
+        _wrapper:
+          callback: ControlFlowCallback
+          ignore_loaders: infer
         callback: CriterionCallback
         input_key: target
         output_key: logits
@@ -58,22 +73,34 @@ stages:
         criterion_key: class
 
       accuracy_class:
+        _wrapper:
+          callback: ControlFlowCallback
+          ignore_loaders: infer
         callback: AccuracyCallback
         input_key: target
         output_key: logits
         prefix: accuracy_class
         num_classes: *num_classes
       auc_class:
+        _wrapper:
+          callback: ControlFlowCallback
+          ignore_loaders: infer
         callback: AUCCallback
         input_key: target_one_hot
         output_key: logits
         prefix: auc_class
         class_args: *class_names
       f1_class:
+        _wrapper:
+          callback: ControlFlowCallback
+          ignore_loaders: infer
         callback: F1MetricCallback
         input_key: target
         output_key: logits
       cm_class:
+        _wrapper:
+          callback: ControlFlowCallback
+          ignore_loaders: infer
         callback: ConfusionMatrixCallback
         input_key: target
         output_key: logits

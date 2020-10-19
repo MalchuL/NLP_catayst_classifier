@@ -9,6 +9,7 @@ from catalyst.contrib.models import SequentialNet
 from catalyst.contrib.models.cv import ResnetEncoder
 from torch.nn.utils.rnn import pad_sequence, pack_padded_sequence
 
+NUM_GROUPS = 8
 
 class NLPClassifierModel(nn.Module):
     def __init__(
@@ -22,7 +23,10 @@ class NLPClassifierModel(nn.Module):
         self.body_net = nn.LSTM(input_size=input_channels, hidden_size=hidden_size, num_layers=num_layers, batch_first=False)
         self.title_net = nn.LSTM(input_size=input_channels, hidden_size=hidden_size, num_layers=num_layers, batch_first=False)
         self.tags_net = nn.Linear(input_channels, hidden_size)
-        self.map_classes = nn.Linear(hidden_size * 3,  num_classes)
+        self.hidden = nn.Linear(hidden_size * 3, hidden_size)
+        self.norm1 = nn.GroupNorm(NUM_GROUPS, hidden_size)
+        self.act = nn.ReLU(inplace=True)
+        self.map_classes = nn.Linear(hidden_size,  num_classes)
         self.act = nn.Softmax(dim=1)
 
 
@@ -42,7 +46,11 @@ class NLPClassifierModel(nn.Module):
         #print(body_output.shape, title_output.shape, tags_output.shape)
         concated = torch.cat([body_output[0], title_output[0], tags_output], dim=1)
 
-        mapped = self.map_classes(concated)
+        hidden = self.hidden(concated)
+        hidden = self.norm1(hidden)
+        hidden = self.act(hidden)
+
+        mapped = self.map_classes(hidden)
 
         classes = self.act(mapped)
         return classes

@@ -28,8 +28,11 @@ class Experiment(ConfigExperiment):
 
         datasets  = {}
 
+        infer = NLPStackOverflowClassificationDataset(infer_datapath, fasttext_model_path, use_sencence_embs=True,
+                                                      embs_aggregation='max', use_mock=use_mock)
+
         for dataset, mode in zip(
-            (train, test), ("train", "valid")
+            (train, test, infer), ("train", "valid", "infer")
         ):
 
               datasets[mode] = {'dataset': dataset, 'collate_fn': dataset.get_collate_fn}
