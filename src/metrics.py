@@ -41,6 +41,9 @@ class F1MetricCallback(BatchMetricCallback):
         self.y_true = []
         self.predict = []
 
+    def on_loader_start(self, runner: "IRunner"):
+        self._reset_stats()
+
     def on_loader_end(self, runner: "IRunner"):
         metric = f1_score(np.array(self.y_true), np.array(self.predict), average='macro')
 
