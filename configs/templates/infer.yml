@@ -1,0 +1,54 @@
+shared:
+  class_names: &class_names ["HQ", "LQ_CLOSE", "LQ_EDIT" ]  #HQ (target = 0): High-quality posts with 30+ score and without a single edit.
+                                                            #LQ_CLOSE (target =1): Low-quality posts that were closed by the community without a single edit.
+                                                            #LQ_EDIT (target =2)
+  max_seq_size: &max_seq_size 32
+  num_classes: &num_classes 3
+
+model_params:
+  model: NLPClassifierModel
+  num_classes: *num_classes
+  input_channels: 302
+
+args:
+  expdir: src
+  baselogdir: logs
+  verbose: True
+
+runner_params:
+  input_key: ["body", "title", "tags"]
+  # network will returns dict, not single value, or list
+  output_key: logits
+
+stages:
+  infer:
+    state_params:
+      main_metric: &reduced_metric f1_score
+      minimize_metric: False
+      num_epochs: 1
+
+    data_params:
+      num_workers: 2
+      batch_size: 128
+      per_gpu_scaling: True
+      use_mock: False
+      train_datapath: dataset/my_train.parquet
+      test_datapath: dataset/my_test.parquet
+      infer_datapath: dataset/test.parquet
+      fasttext_model_path: pretrained_model/wiki.en
+
+    callbacks_params:
+
+      prediction_callback:
+        _wrapper:
+          callback: ControlFlowCallback
+          ignore_loaders: [train, valid]
+        callback: PredictionCallback
+        input_key: Id
+        output_key: logits
+        output_csv_path: prediction.csv
+
+
+
+      saver:
+        callback: CheckpointCallback

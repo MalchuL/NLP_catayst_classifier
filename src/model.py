@@ -17,41 +17,49 @@ class NLPClassifierModel(nn.Module):
         num_classes,
         input_channels,
         hidden_size=128, # Best on MLP
-        num_layers=1
+        num_layers=2,
+        clip=1e-4
     ):
         super().__init__()
-        self.body_net = nn.LSTM(input_size=input_channels, hidden_size=hidden_size, num_layers=num_layers, batch_first=False)
-        self.title_net = nn.LSTM(input_size=input_channels, hidden_size=hidden_size, num_layers=num_layers, batch_first=False)
+
+        self.clip = clip
+
+        self.body_net = nn.LSTM(input_size=input_channels, hidden_size=hidden_size, num_layers=num_layers, batch_first=False, bidirectional=True)
+        self.title_net = nn.LSTM(input_size=input_channels, hidden_size=hidden_size, num_layers=num_layers, batch_first=False, bidirectional=True)
         self.tags_net = nn.Linear(input_channels, hidden_size)
-        self.hidden = nn.Linear(hidden_size * 3, hidden_size)
-        self.norm1 = nn.GroupNorm(NUM_GROUPS, hidden_size)
-        self.act = nn.ReLU(inplace=True)
-        self.map_classes = nn.Linear(hidden_size,  num_classes)
+        self.hidden = nn.Sequential(nn.Linear(hidden_size * 3, hidden_size), nn.GroupNorm(NUM_GROUPS, hidden_size),
+                                    nn.ReLU(inplace=True))
+
+        self.classify = nn.Sequential(
+            nn.Linear(hidden_size, hidden_size),
+            nn.ELU(inplace=True),
+            nn.Linear(hidden_size, num_classes)
+        )
+
         self.act = nn.Softmax(dim=1)
+
 
 
     def pack_items(self, items):
         lengths = [item.shape[0] for item in items]
-        #print(lengths)
         padded_items = pad_sequence(items)
-        #print(padded_items.size(), type(padded_items))
         items = pack_padded_sequence(padded_items, lengths, enforce_sorted=False)
         return items
 
     def forward(self, body, title, tags):
         #print(type(body), type(title), type(tags))
-        _, (body_output,_) = self.body_net(self.pack_items(body))
-        _, (title_output, _) = self.body_net(self.pack_items(title))
         tags_output = self.tags_net(tags)
+        _, (title_output, _) = self.title_net(self.pack_items(title))
+        _, (body_output,_) = self.body_net(self.pack_items(body))
+
+
         #print(body_output.shape, title_output.shape, tags_output.shape)
         concated = torch.cat([body_output[0], title_output[0], tags_output], dim=1)
 
         hidden = self.hidden(concated)
-        hidden = self.norm1(hidden)
-        hidden = self.act(hidden)
-
-        mapped = self.map_classes(hidden)
+        mapped = self.classify(hidden)
 
         classes = self.act(mapped)
+        classes = torch.clamp(classes, self.clip, 1 - self.clip)
         return classes
 
