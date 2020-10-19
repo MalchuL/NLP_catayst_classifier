@@ -9,6 +9,9 @@ model_params:
   model: NLPClassifierModel
   num_classes: *num_classes
   input_channels: 302
+  hidden_size: 128
+  num_layers: 1
+  bidirectional: False
 
 args:
   expdir: src
@@ -36,6 +39,7 @@ stages:
       test_datapath: dataset/my_test.parquet
       infer_datapath: dataset/test.parquet
       fasttext_model_path: pretrained_model/wiki.en
+      aggregation: max
 
     scheduler_params:
        scheduler: ExponentialLR
@@ -45,11 +49,13 @@ stages:
       _key_value: True
 
       class:
-        criterion: CrossEntropyLoss
+        criterion: WeightCrossEntropyLoss
+        weight: [ 0.4,0.4,0.2 ]  # 2 class easy to predict
+
     optimizer_params:
       optimizer: AdamW
-      lr: 0.001
-      weight_decay: 0.0001
+      lr: 0.002
+      weight_decay: 0.001
       betas: [0.9, 0.99]
 
 

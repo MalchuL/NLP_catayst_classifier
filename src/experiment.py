@@ -18,14 +18,16 @@ class Experiment(ConfigExperiment):
         infer_datapath: str = None,
         fasttext_model_path = None,
         use_mock=False,
+        aggregation='max',
         balance_strategy: str = "upsampling",
+
     ):
 
         if stage.startswith('infer'):
             # TODO use_mock=False
             print(use_mock)
             infer = NLPStackOverflowClassificationDataset(infer_datapath, fasttext_model_path, use_sencence_embs=True,
-                                                          embs_aggregation='max', use_mock=use_mock)
+                                                          embs_aggregation=aggregation, use_mock=use_mock)
 
             datasets = {}
 
@@ -36,9 +38,9 @@ class Experiment(ConfigExperiment):
         else:
             # TODO use_mock=False
             print(use_mock)
-            train = NLPStackOverflowClassificationDataset(train_datapath, fasttext_model_path, use_sencence_embs=True, embs_aggregation='max', use_mock=use_mock)
+            train = NLPStackOverflowClassificationDataset(train_datapath, fasttext_model_path, use_sencence_embs=True, embs_aggregation=aggregation, use_mock=use_mock)
             test = NLPStackOverflowClassificationDataset(test_datapath, fasttext_model_path, use_sencence_embs=True,
-                                                          embs_aggregation='max', use_mock=use_mock)
+                                                          embs_aggregation=aggregation, use_mock=use_mock)
 
             datasets  = {}
 

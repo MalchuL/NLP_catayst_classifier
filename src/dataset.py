@@ -31,6 +31,14 @@ def split_tags(tags):
 
 def cleanup_text(text):
     new_text = text
+    new_text = re.sub(r'\[|\]|\(|\)|\"|\{|\}|\<|\>|\'|\:|\;|\»|\«' + r'|\n|\r|\t', '. ', new_text) # Split by separators
+
+
+    # new_text = re.sub(r'\[|\(|\{|\<|\«', '. bracked left ', new_text) # Split by separators
+    # new_text = re.sub(r'\]|\)|\}|\>|\«', ' bracked right. ', new_text) # Split by separators
+    # new_text = re.sub(r'\"|\'', ' quotes ', new_text) # Split by separators
+    # new_text = re.sub(r'\n|\r|\t|\:|\;', '. ', new_text) # Split by separators
+
     new_text = re.sub(r'\@|\$|\*|\[|\]|\(|\)|\"|\^|\~|\{|\}|\<|\>|\,|\'|\:|\;|\»|\«|\-|\_|\+|\%' + r'|\n|\r|\t', ' ', new_text) # Remove useless symbols
     new_text =  re.sub(' +', ' ', new_text) # Remove duplicated spaces
     new_text = new_text.lower().strip()
