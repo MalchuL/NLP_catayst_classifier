@@ -9,7 +9,7 @@ model_params:
   model: NLPClassifierModel
   num_classes: *num_classes
   input_channels: 602
-  hidden_size: 96
+  hidden_size: 128
   num_layers: 1
   bidirectional: False
 
@@ -43,7 +43,7 @@ stages:
 
     scheduler_params:
        scheduler: ExponentialLR
-       gamma: 0.985
+       gamma: 0.975
 
     criterion_params:
       _key_value: True
@@ -54,8 +54,8 @@ stages:
 
     optimizer_params:
       optimizer: AdamW
-      lr: 0.002
-      weight_decay: 0.004
+      lr: 0.004
+      weight_decay: 0.1
       betas: [0.9, 0.99]
 
 

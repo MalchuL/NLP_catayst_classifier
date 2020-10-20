@@ -9,7 +9,7 @@ model_params:
   model: NLPClassifierModel
   num_classes: *num_classes
   input_channels: 602
-  hidden_size: 96
+  hidden_size: 128
   num_layers: 1
   bidirectional: False
 
