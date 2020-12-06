@@ -1,25 +1,25 @@
 shared:
-  class_names: &class_names ["HQ", "LQ_CLOSE", "LQ_EDIT" ]  #HQ (target = 0): High-quality posts with 30+ score and without a single edit.
+  class_names: &class_names ["NOT_DUPLICATE", "DUPLICATE" ]  #HQ (target = 0): High-quality posts with 30+ score and without a single edit.
                                                             #LQ_CLOSE (target =1): Low-quality posts that were closed by the community without a single edit.
                                                             #LQ_EDIT (target =2)
   max_seq_size: &max_seq_size 32
-  num_classes: &num_classes 3
+  num_classes: &num_classes 2
 
 model_params:
   model: NLPClassifierModel
   num_classes: *num_classes
-  input_channels: 602
+  input_channels: 88
   hidden_size: 128
-  num_layers: 1
-  bidirectional: False
+  num_layers: 2
+  bidirectional: True
 
 args:
   expdir: src
-  baselogdir: logs
+  baselogdir: logs_sibur
   verbose: True
 
 runner_params:
-  input_key: ["body", "title", "tags"]
+  input_key: ["name_1", "name_2"]
   # network will returns dict, not single value, or list
   output_key: logits
 
@@ -34,12 +34,9 @@ stages:
       num_workers: 2
       batch_size: 256
       per_gpu_scaling: True
-      use_mock: False
       train_datapath: dataset/my_train.parquet
       test_datapath: dataset/my_test.parquet
       infer_datapath: dataset/test.parquet
-      fasttext_model_path: pretrained_model/wiki.en
-      aggregation: full
 
     scheduler_params:
        scheduler: ExponentialLR
@@ -49,12 +46,11 @@ stages:
       _key_value: True
 
       class:
-        criterion: WeightCrossEntropyLoss
-        weight: [ 0.4,0.4,0.2 ]  # 2 class easy to predict
+        criterion: CrossEntropyLoss
 
     optimizer_params:
       optimizer: AdamW
-      lr: 0.004
+      lr: 0.0005
       weight_decay: 0.1
       betas: [0.9, 0.99]
 

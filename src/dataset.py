@@ -1,9 +1,11 @@
 import collections
+import random
 
 import torch
 import torch.utils.data as data
 import re
 import numpy as np
+import unidecode as unidecode
 from gensim.models.wrappers import FastText
 import pyarrow.parquet as pq
 import math
@@ -85,55 +87,62 @@ class MockFasttext:
         return True
 
 
-class NLPStackOverflowClassificationDataset(data.Dataset):
-    def __init__(self, parque_path, fast_text_path, use_sencence_embs=True, embs_aggregation='max', use_mock=False):
+
+
+class SiburClassificationDataset(data.Dataset):
+    def __init__(self, parque_path):
+
+        self.alphabet = ' "#%&\'()*+,-./0123456789:;<>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]`abcdefghijklmnopqrstuvwxyz{}'
+        self.char_to_int = dict((c, i) for i, c in enumerate( self.alphabet))
+
         self.parque_path = parque_path
-        self.use_sencence_embs = use_sencence_embs
-        self.num_classes = 3
-        print('load fast text model')
-        if use_mock:
-            print('use mock')
-            self.model = FastTextEmbs(MockFasttext())
-        else:
-            self.model = FastTextEmbs(get_fast_text_model(fast_text_path))
-        self.embs_aggregation = embs_aggregation
-        print('load fast text model was finished')
+
+        self.num_classes = 2
         self.df = pq.read_pandas(parque_path).to_pandas()
 
-    def sencences_to_embs(self, text):
-        sentences = process_text_onto_sentences(text)
-        assert len(sentences) > 0, (text,sentences)
-        sentences_emb = [get_sent_emb(sentence, self.embs_aggregation, model=self.model) for sentence in sentences]
-        return np.stack(sentences_emb)
+
+    def sentence_to_one_hot(self, string):
+
+        encoded_string = unidecode.unidecode(string)
+        # integer encode input data
+        integer_encoded = [self.char_to_int[char] for char in encoded_string]
+        # one hot encode
+        onehot_encoded = list()
+        for value in integer_encoded:
+            letter = [0 for _ in range(len(self.alphabet))]
+            letter[value] = 1
+            onehot_encoded.append(letter)
+
+        return np.array(onehot_encoded, dtype=np.float32)
+
 
     def __getitem__(self, item):
         elem = self.df.iloc[item]
-        # Body part
-        body_text = elem['Body']
-        body_embs = self.sencences_to_embs(body_text)
-        # Title part
-        title_text = elem['Title']
-        title_embs = self.sencences_to_embs(title_text)
-        # Tags part
-        tags_text = elem['Tags']
-        tags_embs = get_sent_emb(' '.join(split_tags(tags_text)), self.embs_aggregation, model=self.model)
+        name_1 = elem['name_1']
+        name_1_embs = self.sentence_to_one_hot(name_1)
+        name_2 = elem['name_2']
+        name_2_embs = self.sentence_to_one_hot(name_2)
 
-
+        if random.choice([True, False]):
+            name_1_embs, name_2_embs = name_2_embs, name_1_embs
 
         try:
-            target = elem['target']
+            target = elem['is_duplicate']
             target_one_hot = np.zeros(self.num_classes, dtype=np.float32)
             target_one_hot[target] = 1
         except:
             target = 4
             target_one_hot = np.zeros(self.num_classes, dtype=np.float32)
-
-        return {'body': body_embs.astype(np.float32), 'title': title_embs.astype(np.float32), 'tags': tags_embs.astype(np.float32), 'target': target, 'target_one_hot': target_one_hot, 'Id': elem.name}
+        #print(name_1, name_2, name_1_embs.shape, name_2_embs.shape)
+        return {'name_1': name_1_embs.astype(np.float32), 'name_2': name_2_embs.astype(np.float32), 'target': target, 'target_one_hot': target_one_hot, 'pair_id': elem.name}
 
     def __len__(self):
         return len(self.df)
 
-    keys = ['body', 'title']
+    keys = ['name_1', 'name_2']
+
+    def get_labels(self):
+        return list(self.df.is_duplicate)
 
     def get_collate_fn(self, batch):
         keys = batch[0].keys()

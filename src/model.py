@@ -28,19 +28,13 @@ class NLPClassifierModel(nn.Module):
 
         self.body_title_net = nn.LSTM(input_size=input_channels, hidden_size=hidden_size, num_layers=num_layers,
                                 batch_first=False, bidirectional=bidirectional)  # Two different networks don't works
-        self.tags_net = nn.Sequential(nn.Linear(input_channels, hidden_size), nn.BatchNorm1d(hidden_size),
-                                      nn.ReLU(inplace=True))
 
 
-        self.title_lstm_output_to_hidden = nn.Linear(hidden_size * num_layers * (2 if bidirectional else 1), hidden_size)
+        lstm_channels = hidden_size * num_layers * (2 if bidirectional else 1)
 
 
-        self.tags_to_title = nn.Sequential(nn.Linear(hidden_size, input_channels), nn.BatchNorm1d(input_channels),
-                                      nn.ReLU(inplace=True))
-        self.title_to_body = nn.Sequential(nn.Linear(hidden_size, input_channels), nn.BatchNorm1d(input_channels),
-                                      nn.ReLU(inplace=True))
 
-        self.hidden = nn.Sequential(nn.Linear(hidden_size * 3, hidden_size), nn.BatchNorm1d(hidden_size),
+        self.hidden = nn.Sequential(nn.Linear(lstm_channels * (2 + 3), hidden_size), nn.BatchNorm1d(hidden_size),
                                     nn.ReLU(inplace=True))
 
         self.classify = nn.Sequential(
@@ -49,37 +43,48 @@ class NLPClassifierModel(nn.Module):
 
         self.act = nn.Softmax(dim=1)
 
+    @staticmethod
+    def pack_items(items):
+        lengths = [item.shape[0] for item in items]
 
-    def pack_items(self, items, add_elem=None):
-        if add_elem is None:
-            lengths = [item.shape[0] for item in items]
-        else:
-            lengths = [item.shape[0] + 1 for item in items]
         padded_items = pad_sequence(items)
-        if add_elem is not None:
-            B,C = add_elem.shape
-            padded_items = torch.cat([add_elem.view(1,B,-1), padded_items], dim=0)
         items = pack_padded_sequence(padded_items, lengths, enforce_sorted=False)
         return items
 
-    def forward(self, body, title, tags):
-        #print(type(body), type(title), type(tags))
-        B, C = tags.shape
-        tags_output = self.tags_net(tags)
+    def process_name_i(self, name_i):
+        _, (title_output, title_cell) = self.body_title_net(self.pack_items(name_i))
+        return title_output
 
-        tags_to_title = self.tags_to_title(tags_output)
-        _, (title_output, title_cell) = self.body_title_net(self.pack_items(title, tags_to_title))
-        assert title_cell.shape[1] == B
 
-        title_cell = self.title_lstm_output_to_hidden(title_cell.transpose(1,0).reshape(B, -1))
-        title_to_body =  self.title_to_body(title_cell)
-        _, (body_output,_) = self.body_title_net(self.pack_items(body, title_to_body))
-        assert body_output.shape[1] == B
+    def merge_outputs(self, *outputs_list):
+        stacked_list = torch.stack(outputs_list, dim=0)
+        mean = stacked_list.mean(0)
+        max = torch.max(stacked_list, dim=0)[0]
 
-        #print(body_output.shape, title_output.shape, tags_output.shape)
-        concated = torch.cat([body_output[-1], title_output[-1], tags_output], dim=1)
+        if len(outputs_list) == 2:
+            diff_abs = (outputs_list[0] - outputs_list[1]).abs()
+        else:
+            raise
 
-        hidden = self.hidden(concated)
+        output = torch.cat([max,mean,diff_abs,*outputs_list], dim=-1)
+        return output
+
+
+    def forward(self, name_1, name_2):
+
+       # B,T,C = name_1.shape
+        name_1_output = self.process_name_i(name_1)
+        name_2_output = self.process_name_i(name_2)
+        #assert name_1_output.shape[1] == B
+
+        merged = self.merge_outputs(name_1_output,name_2_output)
+
+        #(num_layers * num_directions, batch, hidden_size):
+        merged = merged.permute(1,0,2).reshape(merged.shape[1],-1)
+
+
+        hidden = self.hidden(merged)
+
         mapped = self.classify(hidden)
 
         classes = self.act(mapped)

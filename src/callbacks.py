@@ -4,9 +4,9 @@ import csv
 
 
 class PredictionCallback(Callback):
-    """F1 score metric callback."""
 
-    def __init__(self, input_key: str = 'Id', output_key: str = "logits", output_csv_path='prediction.csv'):
+
+    def __init__(self, input_key: str = 'pair_id', output_key: str = "logits", output_csv_path='prediction.csv'):
         super().__init__(CallbackOrder.Logging)
         self.output_csv_path = output_csv_path
         self.output_key = output_key
@@ -22,7 +22,7 @@ class PredictionCallback(Callback):
         with open(self.output_csv_path, mode='w') as prediction_csv:
             prediction_writer = csv.writer(prediction_csv, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
 
-            prediction_writer.writerow(['Id', 'Predicted'])
+            prediction_writer.writerow(['pair_id', 'is_duplicate'])
 
             for index, pred in zip(self.ids, self.predict):
                 prediction_writer.writerow([index, pred])
@@ -45,3 +45,27 @@ class PredictionCallback(Callback):
 
         self.ids.extend(list(ids))
         self.predict.extend(list(softmax_predict))
+
+
+
+
+class SimilarityToClass(Callback):
+    """F1 score metric callback."""
+
+    def __init__(
+        self,
+        input_key: str = "logits",
+        output_key: str = "pred_class",
+    ):
+        self.input_key = input_key
+        self.output_key = output_key
+        super().__init__(CallbackOrder.Metric-1)
+
+
+    def on_batch_end(self, runner: "IRunner") -> None:
+        """Computes metrics and add them to batch metrics."""
+        output = runner.output[self.input_key].copy()
+        output[output > 0] = 1
+        output[output < 0 ] = 0
+
+        runner.output[self.output_key] = output
