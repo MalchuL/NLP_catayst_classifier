@@ -28,7 +28,7 @@ stages:
     state_params:
       main_metric: &reduced_metric f1_score
       minimize_metric: False
-      num_epochs: 120
+      num_epochs: 8
 
     data_params:
       num_workers: 2
